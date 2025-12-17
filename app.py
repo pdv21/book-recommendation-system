@@ -523,8 +523,7 @@ with tab1:
         st.write("**ratings_clean.csv columns:**", list(ratings.columns))
 
 with tab2:
-    st.subheader("Gợi ý cho người dùng (Item-Item CF)")
-    st.caption("Chọn user_id trong tập train. User mới không có lịch sử rating → model không gợi ý được.")
+    st.subheader("Gợi ý cho người dùng")
 
     train_df, _test_df = train_test_split_by_user(ratings, test_size=test_size, min_per_user=5)
     R, user_index, item_index, users, items = build_user_item_matrix(train_df)
