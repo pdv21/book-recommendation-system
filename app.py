@@ -523,41 +523,53 @@ with tab1:
         st.write("**ratings_clean.csv columns:**", list(ratings.columns))
 
 with tab2:
+    st.subheader("Gợi ý cho người dùng (Item-Item CF)")
+    st.caption("Chọn user_id trong tập train. User mới không có lịch sử rating → model không gợi ý được.")
 
     train_df, _test_df = train_test_split_by_user(ratings, test_size=test_size, min_per_user=5)
     R, user_index, item_index, users, items = build_user_item_matrix(train_df)
     S = compute_item_similarity(R)
 
-    left, right = st.columns([1, 2], gap="large")
+    # ---- INPUT + BUTTON (TRÊN) ----
+    uid = st.selectbox("user_id", options=[int(u) for u in users[:5000]], index=0)
+    run = st.button("✨ Recommend", use_container_width=True)
 
-    with left:
-        uid = st.selectbox("user_id", options=[int(u) for u in users[:5000]], index=0)
-        run = st.button("✨ Recommend", use_container_width=True)
+    # ---- KẾT QUẢ (DƯỚI) ----
+    if run:
+        recs = recommend_for_user(
+            int(uid),
+            R, S, user_index, items,
+            k=int(top_k),
+            k_neighbors=int(k_neighbors)
+        )
 
-    with right:
-        if run:
-            recs = recommend_for_user(int(uid), R, S, user_index, items, k=int(top_k), k_neighbors=int(k_neighbors))
-            if not recs:
-                st.warning("Không có gợi ý (user mới hoặc không đủ dữ liệu).")
-            else:
-                rec_df = pd.DataFrame(recs, columns=["book_id", "pred_score"])
-                join_cols = [c for c in ["book_id", "title", "authors", "original_publication_year", "language_code", "n_ratings"] if c in books.columns]
-                if join_cols:
-                    rec_df = rec_df.merge(books[join_cols], on="book_id", how="left")
+        if not recs:
+            st.warning("Không có gợi ý (user mới hoặc không đủ dữ liệu).")
+        else:
+            rec_df = pd.DataFrame(recs, columns=["book_id", "pred_score"])
 
-                st.markdown("### ✅ Danh sách gợi ý")
-                st.dataframe(
-                    rec_df.drop(columns=["pred_score"], errors="ignore"),
-                    use_container_width=True,
-                    hide_index=True,
-                )
+            join_cols = [
+                c for c in
+                ["book_id", "title", "authors", "original_publication_year", "language_code", "n_ratings"]
+                if c in books.columns
+            ]
+            if join_cols:
+                rec_df = rec_df.merge(books[join_cols], on="book_id", how="left")
 
-                st.markdown("### 🧾 Lịch sử rating của user (train)")
-                hist = train_df[train_df["user_id"] == int(uid)].copy()
-                if "title" in books.columns:
-                    hist = hist.merge(books[["book_id", "title"]], on="book_id", how="left")
-                hist = hist.sort_values("rating", ascending=False).head(30)
-                st.dataframe(hist, use_container_width=True, hide_index=True)
+            st.markdown("### ✅ Danh sách gợi ý")
+            st.dataframe(
+                rec_df.drop(columns=["pred_score"], errors="ignore"),
+                use_container_width=True,
+                hide_index=True
+            )
+
+            st.markdown("### 🧾 Lịch sử rating của user (train)")
+            hist = train_df[train_df["user_id"] == int(uid)].copy()
+            if "title" in books.columns:
+                hist = hist.merge(books[["book_id", "title"]], on="book_id", how="left")
+
+            hist = hist.sort_values("rating", ascending=False).head(30)
+            st.dataframe(hist, use_container_width=True, hide_index=True)
 
 with tab3:
 
